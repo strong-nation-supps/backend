@@ -17,7 +17,7 @@ app.post("/shopify", async (req, res) => {
 
     if (phone) {
       await axios.post(
-        `https://api.wamantra.com/api/abcd1234/contact/send-message`,
+        `https://api.wamantra.com/api/a6da9368-b550-4232-b4b4-fb3a73f8f30b/contact/send-message`,
         {
           phone_number: phone.replace("+", ""),
           message_body: `Hi ${name}, your order #${orderId} is confirmed ✅`
