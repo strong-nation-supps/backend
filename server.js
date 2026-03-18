@@ -17,14 +17,14 @@ app.post("/shopify", async (req, res) => {
 
     if (phone) {
       await axios.post(
-        `https://api.wamantra.com/api/${VENDOR_ID}/contact/send-message`,
+        `https://api.wamantra.com/api/abcd1234/contact/send-message`,
         {
           phone_number: phone.replace("+", ""),
           message_body: `Hi ${name}, your order #${orderId} is confirmed ✅`
         },
         {
           headers: {
-            Authorization: `Bearer ${TOKEN}`,
+           Authorization: "Bearer 8JpOQubQbgetFvVkFzyut0C1VsxcUEwLeyB0SEK0DLdFnrjdQEwtcW0f5eyEe7ay",
             "Content-Type": "application/json"
           }
         }
