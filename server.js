@@ -42,7 +42,13 @@ app.post("/shopify", async (req, res) => {
       `https://api.wamantra.com/api/${VENDOR_ID}/contact/send-message`,
       {
         phone_number: phone,
-        message_body: `Hi ${name}, your order #${orderId} is confirmed ✅`
+        message_body: `Hi ${name} 👋
+
+🎉 Your order #${orderId} has been successfully placed!
+
+📦 We'll notify you once it's shipped.
+
+Thank you for shopping with us ❤️`
       },
       {
         headers: {
