@@ -50,31 +50,6 @@ app.post("/shopify", async (req, res) => {
   }
 });
 
-app.get("/test", async (req, res) => {
-  try {
-    const response = await axios.post(
-      "https://api.wamantra.com/api/a6da9368-b550-4232-b4b4-fb3a73f8f30b/contact/send-message",
-      {
-        phone_number: "919569610617",
-        message_body: "🔥 FINAL TEST MESSAGE"
-      },
-      {
-        headers: {
-          Authorization: "Bearer 8JpOQubQbgetFvVkFzyut0C1VsxcUEwLeyB0SEK0DLdFnrjdQEwtcW0f5eyEe7ay",
-          "Content-Type": "application/json"
-        }
-      }
-    );
-
-    console.log("SUCCESS:", response.data);
-    res.send("Message Sent ✅");
-
-  } catch (err) {
-    console.log("ERROR:", err.response?.data || err.message);
-    res.send("Error ❌");
-  }
-});
-
 // ✅ IMPORTANT (Render ke liye)
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => console.log(`Server running on ${PORT}`));
