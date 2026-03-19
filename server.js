@@ -4,7 +4,7 @@ const axios = require("axios");
 const app = express();
 app.use(express.json());
 
-// 🔐 YOUR CREDENTIALS (ENV se aayega)
+// 🔐 ENV
 const TOKEN = process.env.TOKEN;
 const VENDOR_ID = "a6da9368-b550-4232-b4b4-fb3a73f8f30b";
 
@@ -20,35 +20,56 @@ app.post("/shopify", async (req, res) => {
 
     console.log("📩 Incoming Data:", JSON.stringify(data, null, 2));
 
-    const phoneRaw = data?.customer?.phone;
+    const phoneRaw = data?.customer?.phone || data?.phone;
     const name = data?.customer?.first_name || "Customer";
-    const orderId = data?.id;
+    const orderId = data?.name || data?.id;
 
     // ✅ Phone format fix
     const phone = phoneRaw ? phoneRaw.replace("+", "") : null;
-
-    console.log("📞 Phone:", phone);
 
     if (!phone) {
       console.log("❌ No phone number found");
       return res.sendStatus(200);
     }
 
-    // ❗ DEBUG (temporary)
-    console.log("🔑 TOKEN:", TOKEN);
+    // 🧠 PRODUCT LIST BUILD
+    const lineItems = data?.line_items || [];
+
+    let productText = "";
+
+    if (lineItems.length > 0) {
+      lineItems.forEach((item, index) => {
+        productText += `${index + 1}. ${item.title} x ${item.quantity}\n`;
+      });
+    } else {
+      productText = "Items details unavailable";
+    }
+
+    // 💰 TOTAL PRICE
+    const totalPrice = data?.total_price || "0";
+
+    // 💬 FINAL MESSAGE
+    const message = `Hi ${name} 👋
+
+🎉 Your order ${orderId} is CONFIRMED ✅
+
+🛒 Items:
+${productText}
+
+💰 Total: ₹${totalPrice}
+
+📦 We'll notify you once it's shipped.
+
+Thank you for shopping with us ❤️`;
+
+    console.log("📤 Final Message:\n", message);
 
     // ✅ WhatsApp API call
     const response = await axios.post(
       `https://api.wamantra.com/api/${VENDOR_ID}/contact/send-message`,
       {
         phone_number: phone,
-        message_body: `Hi ${name} 👋
-
-🎉 Your order #${orderId} has been successfully placed!
-
-📦 We'll notify you once it's shipped.
-
-Thank you for shopping with us ❤️`
+        message_body: message
       },
       {
         headers: {
