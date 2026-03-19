@@ -4,11 +4,11 @@ const axios = require("axios");
 const app = express();
 app.use(express.json());
 
-// 🔐 YOUR CREDENTIALS
-const TOKEN = "8JpOQubQbgetFvVkFzyut0C1VsxcUEwLeyB0SEK0DLdFnrjdQEwtcW0f5eyEe7ay";
+// 🔐 YOUR CREDENTIALS (ENV se aayega)
+const TOKEN = process.env.TOKEN;
 const VENDOR_ID = "a6da9368-b550-4232-b4b4-fb3a73f8f30b";
 
-// ✅ TEST ROUTE (browser check ke liye)
+// ✅ TEST ROUTE
 app.get("/", (req, res) => {
   res.send("Server is running ✅");
 });
@@ -24,7 +24,7 @@ app.post("/shopify", async (req, res) => {
     const name = data?.customer?.first_name || "Customer";
     const orderId = data?.id;
 
-    // ✅ Phone format fix (+ remove)
+    // ✅ Phone format fix
     const phone = phoneRaw ? phoneRaw.replace("+", "") : null;
 
     console.log("📞 Phone:", phone);
@@ -33,6 +33,9 @@ app.post("/shopify", async (req, res) => {
       console.log("❌ No phone number found");
       return res.sendStatus(200);
     }
+
+    // ❗ DEBUG (temporary)
+    console.log("🔑 TOKEN:", TOKEN);
 
     // ✅ WhatsApp API call
     const response = await axios.post(
@@ -58,6 +61,6 @@ app.post("/shopify", async (req, res) => {
   }
 });
 
-// ✅ PORT (Render compatible)
+// ✅ PORT
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => console.log(`🚀 Server running on port ${PORT}`));
