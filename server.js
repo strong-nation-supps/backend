@@ -16,33 +16,32 @@ if (!TOKEN) {
 // 🔁 Duplicate protection
 const processedWebhookIds = new Set();
 
-// 🧹 Cleanup every 1 hour
+// 🧹 Cleanup
 setInterval(() => {
   processedWebhookIds.clear();
-  console.log("🧹 Cleared webhook cache");
+  console.log("🧹 Cache cleared");
 }, 1000 * 60 * 60);
 
-// ✅ TEST ROUTE
+// ✅ TEST
 app.get("/", (req, res) => {
   res.send("Server is running ✅");
 });
 
-// ✅ MAIN WEBHOOK
+// ✅ WEBHOOK
 app.post("/shopify", async (req, res) => {
   const data = req.body;
 
   try {
-    // 🔁 Duplicate check
     const webhookId =
       req.headers["x-shopify-webhook-id"] || data?.id;
 
     if (processedWebhookIds.has(webhookId)) {
-      console.log("⚠️ Duplicate ignored:", webhookId);
+      console.log("⚠️ Duplicate:", webhookId);
       return res.sendStatus(200);
     }
     processedWebhookIds.add(webhookId);
 
-    // ⚡ Respond fast
+    // ⚡ Fast response
     res.sendStatus(200);
 
     console.log("📩 Order:", data?.order_number);
@@ -53,29 +52,26 @@ app.post("/shopify", async (req, res) => {
     const orderNumber = data?.order_number || data?.id;
     const totalPrice = parseInt(data?.total_price || "0");
 
-    // 📱 Phone format fix
+    // 📱 Phone fix
     let phone = null;
-
     if (phoneRaw) {
       phone = phoneRaw.replace(/\D/g, "");
-
       if (phone.length === 10) {
         phone = "91" + phone;
       }
     }
 
     if (!phone) {
-      console.log("❌ No phone number found");
+      console.log("❌ No phone");
       return;
     }
 
     console.log("📲 Phone:", phone);
 
-    // 🛒 Items build
+    // 🛒 Items
     const lineItems = data?.line_items || [];
 
     let itemsText = "Items unavailable";
-
     if (lineItems.length > 0) {
       itemsText = lineItems
         .map(
@@ -87,13 +83,12 @@ app.post("/shopify", async (req, res) => {
 
     console.log("📦 Items:\n" + itemsText);
 
-    // ========================
+    // =========================
     // 🔥 WA MANTRA API CALL
-    // ========================
+    // =========================
     const payload = {
       phone_number: phone,
       template_name: "order_confirm_sn",
-      type: "template",
       template_params: [
         String(name),
         String(orderNumber),
@@ -102,7 +97,7 @@ app.post("/shopify", async (req, res) => {
       ]
     };
 
-    console.log("📤 Payload:", JSON.stringify(payload, null, 2));
+    console.log("📤 Payload:", payload);
 
     const response = await axios.post(
       `https://api.wamantra.com/api/${VENDOR_ID}/contact/send-template`,
@@ -119,17 +114,13 @@ app.post("/shopify", async (req, res) => {
     console.log("✅ WhatsApp Sent:", response.data);
 
   } catch (err) {
-    // 🔥 FINAL DEBUG BLOCK
     console.log("❌ ERROR STATUS:", err.response?.status);
-
-    console.log("❌ ERROR DATA:");
     console.dir(err.response?.data, { depth: null });
-
     console.log("❌ ERROR MESSAGE:", err.message);
   }
 });
 
-// 🚀 START SERVER
+// 🚀 START
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () =>
   console.log(`🚀 Server running on port ${PORT}`)
