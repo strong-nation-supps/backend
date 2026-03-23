@@ -41,7 +41,7 @@ app.post("/shopify", async (req, res) => {
     }
     processedWebhookIds.add(webhookId);
 
-    // ✅ Respond immediately (Shopify best practice)
+    // ⚡ Respond fast
     res.sendStatus(200);
 
     console.log("📩 Order:", data?.order_number);
@@ -87,80 +87,39 @@ app.post("/shopify", async (req, res) => {
     console.log("📦 Items:\n" + itemsText);
 
     // =========================
-    // 🔥 OPTIONAL TEMPLATE (can fail safely)
+    // 🔥 TEMPLATE SEND ONLY
     // =========================
-    try {
-      console.log("🚀 Trying TEMPLATE...");
+    const payload = {
+      phone_number: phone,
+      template_name: "order_confirm_sn", // ⚠️ exact template name
+      template_params: [
+        String(name),
+        String(orderNumber),
+        String(itemsText),
+        String(totalPrice)
+      ]
+    };
 
-      const templateRes = await axios.post(
-        `https://api.wamantra.com/api/${VENDOR_ID}/contact/send-template`,
-        {
-          phone_number: phone,
-          template_name: "order_confirm_sn", // 🔁 change if needed
-          template_params: [
-            String(name),
-            String(orderNumber),
-            String(itemsText),
-            String(totalPrice)
-          ]
+    console.log("📤 Payload:", payload);
+
+    const response = await axios.post(
+      `https://api.wamantra.com/api/${VENDOR_ID}/contact/send-template`,
+      payload,
+      {
+        headers: {
+          Authorization: `Bearer ${TOKEN}`,
+          "Content-Type": "application/json"
         },
-        {
-          headers: {
-            Authorization: `Bearer ${TOKEN}`,
-            "Content-Type": "application/json"
-          },
-          timeout: 10000
-        }
-      );
+        timeout: 10000
+      }
+    );
 
-      console.log("✅ TEMPLATE SENT:", templateRes.data);
-      return;
-
-    } catch (templateErr) {
-      console.log("❌ TEMPLATE FAILED:", templateErr.response?.status);
-    }
-
-    // =========================
-    // 🔥 FALLBACK NORMAL MESSAGE
-    // =========================
-    try {
-      console.log("🔁 Sending NORMAL message...");
-
-      const msg = `Hi ${name} 👋
-
-Your order #${orderNumber} is CONFIRMED ✅
-
-🛒 Items:
-${itemsText}
-
-💰 Total: ₹${totalPrice}
-
-Thank you for shopping with us!
-Strong Nation Supps 💪`;
-
-      const normalRes = await axios.post(
-        `https://api.wamantra.com/api/${VENDOR_ID}/contact/send-message`,
-        {
-          phone_number: phone,
-          message_body: msg   // ✅ FIXED HERE
-        },
-        {
-          headers: {
-            Authorization: `Bearer ${TOKEN}`,
-            "Content-Type": "application/json"
-          }
-        }
-      );
-
-      console.log("✅ NORMAL MESSAGE SENT:", normalRes.data);
-
-    } catch (msgErr) {
-      console.log("❌ NORMAL MESSAGE FAILED:");
-      console.dir(msgErr.response?.data, { depth: null });
-    }
+    console.log("✅ TEMPLATE SENT:", response.data);
 
   } catch (err) {
-    console.log("❌ SERVER ERROR:", err.message);
+    console.log("❌ ERROR STATUS:", err.response?.status);
+    console.dir(err.response?.data, { depth: null });
+    console.log("❌ ERROR MESSAGE:", err.message);
   }
 });
 
