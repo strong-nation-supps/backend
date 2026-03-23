@@ -8,6 +8,15 @@ app.use(express.json());
 const TOKEN = process.env.TOKEN;
 const VENDOR_ID = "a6da9368-b550-4232-b4b4-fb3a73f8f30b";
 
+// ❗ TOKEN safety check
+if (!TOKEN) {
+  console.error("❌ TOKEN missing in environment variables");
+  process.exit(1);
+}
+
+// 🔁 Duplicate protection (memory based)
+const processedWebhookIds = new Set();
+
 // ✅ TEST ROUTE
 app.get("/", (req, res) => {
   res.send("Server is running ✅");
@@ -18,58 +27,69 @@ app.post("/shopify", async (req, res) => {
   try {
     const data = req.body;
 
+    // 🔁 Webhook ID (with fallback)
+    const webhookId =
+      req.headers["x-shopify-webhook-id"] || data?.id;
+
+    if (processedWebhookIds.has(webhookId)) {
+      console.log("⚠️ Duplicate webhook ignored:", webhookId);
+      return res.sendStatus(200);
+    }
+    processedWebhookIds.add(webhookId);
+
     console.log("📩 Incoming Data:", JSON.stringify(data, null, 2));
 
+    // 👤 Customer details
     const phoneRaw = data?.customer?.phone || data?.phone;
     const name = data?.customer?.first_name || "Customer";
-    const orderId = data?.name || data?.id;
+    const orderNumber = data?.order_number || data?.id;
+    const totalPrice = data?.total_price || "0";
 
-    // ✅ Phone format fix
-    const phone = phoneRaw ? phoneRaw.replace("+", "") : null;
+    // 📱 Phone format (remove +, spaces, etc.)
+    let phone = null;
+    if (phoneRaw) {
+      phone = phoneRaw.replace(/\D/g, "");
+    }
 
     if (!phone) {
       console.log("❌ No phone number found");
       return res.sendStatus(200);
     }
 
-    // 🧠 PRODUCT LIST BUILD
+    // 🛒 PRODUCT LIST BUILD
     const lineItems = data?.line_items || [];
 
-    let productText = "";
+    let itemsText = "Items details unavailable";
 
     if (lineItems.length > 0) {
-      lineItems.forEach((item, index) => {
-        productText += `${index + 1}. ${item.title} x ${item.quantity}\n`;
-      });
-    } else {
-      productText = "Items details unavailable";
+      itemsText = lineItems
+        .map(
+          (item, index) =>
+            `${index + 1}. ${item.title.substring(0, 50)} x ${item.quantity}`
+        )
+        .join("\n");
     }
 
-    // 💰 TOTAL PRICE
-    const totalPrice = data?.total_price || "0";
+    console.log("📦 Items:\n", itemsText);
 
-    // 💬 FINAL MESSAGE
-    const message = `Hi ${name} 👋
-
-🎉 Your order ${orderId} is CONFIRMED ✅
-
-🛒 Items:
-${productText}
-
-💰 Total: ₹${totalPrice}
-
-📦 We'll notify you once it's shipped.
-
-Thank you for shopping with us ❤️`;
-
-    console.log("📤 Final Message:\n", message);
-
-    // ✅ WhatsApp API call
+    // ================================
+    // ✅ WA MANTRA TEMPLATE API CALL
+    // ================================
     const response = await axios.post(
-      `https://api.wamantra.com/api/${VENDOR_ID}/contact/send-message`,
+      `https://api.wamantra.com/api/${VENDOR_ID}/contact/send-template`,
       {
         phone_number: phone,
-        message_body: message
+
+        // ⚠️ EXACT template name
+        template_name: "order_confirm_sn",
+
+        // ⚠️ Variable mapping (match template)
+        template_params: [
+          name,         // {{1}}
+          orderNumber,  // {{2}}
+          itemsText,    // {{3}}
+          totalPrice    // {{4}}
+        ]
       },
       {
         headers: {
@@ -79,9 +99,10 @@ Thank you for shopping with us ❤️`;
       }
     );
 
-    console.log("✅ Wamantra Response:", response.data);
+    console.log("✅ Wamantra Template Response:", response.data);
 
     res.sendStatus(200);
+
   } catch (err) {
     console.log("❌ ERROR:", err.response?.data || err.message);
     res.sendStatus(500);
@@ -90,4 +111,6 @@ Thank you for shopping with us ❤️`;
 
 // ✅ PORT
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => console.log(`🚀 Server running on port ${PORT}`));
+app.listen(PORT, () =>
+  console.log(`🚀 Server running on port ${PORT}`)
+);
