@@ -14,8 +14,14 @@ if (!TOKEN) {
   process.exit(1);
 }
 
-// 🔁 Duplicate protection (memory based)
+// 🔁 Duplicate protection
 const processedWebhookIds = new Set();
+
+// 🧹 साफ करने के लिए (memory leak avoid)
+setInterval(() => {
+  processedWebhookIds.clear();
+  console.log("🧹 Cleared processed webhook IDs");
+}, 1000 * 60 * 60); // every 1 hour
 
 // ✅ TEST ROUTE
 app.get("/", (req, res) => {
@@ -27,7 +33,7 @@ app.post("/shopify", async (req, res) => {
   try {
     const data = req.body;
 
-    // 🔁 Webhook ID (with fallback)
+    // 🔁 Webhook ID
     const webhookId =
       req.headers["x-shopify-webhook-id"] || data?.id;
 
@@ -37,24 +43,36 @@ app.post("/shopify", async (req, res) => {
     }
     processedWebhookIds.add(webhookId);
 
-    console.log("📩 Incoming Data:", JSON.stringify(data, null, 2));
+    // ⚡ Respond fast to Shopify
+    res.sendStatus(200);
+
+    console.log("📩 Incoming Order:", data?.order_number);
 
     // 👤 Customer details
     const phoneRaw = data?.customer?.phone || data?.phone;
     const name = data?.customer?.first_name || "Customer";
     const orderNumber = data?.order_number || data?.id;
-    const totalPrice = data?.total_price || "0";
 
-    // 📱 Phone format (remove +, spaces, etc.)
+    // 💰 Price clean
+    const totalPrice = parseInt(data?.total_price || "0");
+
+    // 📱 Phone format fix (India)
     let phone = null;
+
     if (phoneRaw) {
       phone = phoneRaw.replace(/\D/g, "");
+
+      if (phone.length === 10) {
+        phone = "91" + phone;
+      }
     }
 
     if (!phone) {
       console.log("❌ No phone number found");
-      return res.sendStatus(200);
+      return;
     }
+
+    console.log("📲 Sending to:", phone);
 
     // 🛒 PRODUCT LIST BUILD
     const lineItems = data?.line_items || [];
@@ -65,12 +83,12 @@ app.post("/shopify", async (req, res) => {
       itemsText = lineItems
         .map(
           (item, index) =>
-            `${index + 1}. ${item.title.substring(0, 50)} x ${item.quantity}`
+            `${index + 1}. ${(item.title || "Item").substring(0, 50)} x ${item.quantity}`
         )
         .join("\n");
     }
 
-    console.log("📦 Items:\n", itemsText);
+    console.log("📦 Items:\n" + itemsText);
 
     // ================================
     // ✅ WA MANTRA TEMPLATE API CALL
@@ -83,7 +101,7 @@ app.post("/shopify", async (req, res) => {
         // ⚠️ EXACT template name
         template_name: "order_confirm_sn",
 
-        // ⚠️ Variable mapping (match template)
+        // ⚠️ Variables mapping
         template_params: [
           name,         // {{1}}
           orderNumber,  // {{2}}
@@ -99,13 +117,10 @@ app.post("/shopify", async (req, res) => {
       }
     );
 
-    console.log("✅ Wamantra Template Response:", response.data);
-
-    res.sendStatus(200);
+    console.log("✅ WhatsApp Sent:", response.data);
 
   } catch (err) {
     console.log("❌ ERROR:", err.response?.data || err.message);
-    res.sendStatus(500);
   }
 });
 
