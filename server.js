@@ -8,7 +8,6 @@ app.use(express.json());
 const TOKEN = process.env.TOKEN;
 const VENDOR_ID = "a6da9368-b550-4232-b4b4-fb3a73f8f30b";
 
-// ❗ TOKEN safety check
 if (!TOKEN) {
   console.error("❌ TOKEN missing in environment variables");
   process.exit(1);
@@ -17,46 +16,43 @@ if (!TOKEN) {
 // 🔁 Duplicate protection
 const processedWebhookIds = new Set();
 
-// 🧹 साफ करने के लिए (memory leak avoid)
+// 🧹 Cleanup
 setInterval(() => {
   processedWebhookIds.clear();
-  console.log("🧹 Cleared processed webhook IDs");
-}, 1000 * 60 * 60); // every 1 hour
+  console.log("🧹 Cleared webhook cache");
+}, 1000 * 60 * 60);
 
-// ✅ TEST ROUTE
+// ✅ TEST
 app.get("/", (req, res) => {
   res.send("Server is running ✅");
 });
 
-// ✅ MAIN WEBHOOK ROUTE
+// ✅ MAIN WEBHOOK
 app.post("/shopify", async (req, res) => {
   try {
     const data = req.body;
 
-    // 🔁 Webhook ID
     const webhookId =
       req.headers["x-shopify-webhook-id"] || data?.id;
 
     if (processedWebhookIds.has(webhookId)) {
-      console.log("⚠️ Duplicate webhook ignored:", webhookId);
+      console.log("⚠️ Duplicate ignored:", webhookId);
       return res.sendStatus(200);
     }
     processedWebhookIds.add(webhookId);
 
-    // ⚡ Respond fast to Shopify
+    // ⚡ respond fast
     res.sendStatus(200);
 
-    console.log("📩 Incoming Order:", data?.order_number);
+    console.log("📩 Order:", data?.order_number);
 
-    // 👤 Customer details
+    // 👤 Customer
     const phoneRaw = data?.customer?.phone || data?.phone;
     const name = data?.customer?.first_name || "Customer";
     const orderNumber = data?.order_number || data?.id;
-
-    // 💰 Price clean
     const totalPrice = parseInt(data?.total_price || "0");
 
-    // 📱 Phone format fix (India)
+    // 📱 Phone fix
     let phone = null;
 
     if (phoneRaw) {
@@ -68,63 +64,66 @@ app.post("/shopify", async (req, res) => {
     }
 
     if (!phone) {
-      console.log("❌ No phone number found");
+      console.log("❌ No phone");
       return;
     }
 
-    console.log("📲 Sending to:", phone);
+    console.log("📲 Phone:", phone);
 
-    // 🛒 PRODUCT LIST BUILD
+    // 🛒 Items
     const lineItems = data?.line_items || [];
 
-    let itemsText = "Items details unavailable";
+    let itemsText = "Items unavailable";
 
     if (lineItems.length > 0) {
       itemsText = lineItems
         .map(
-          (item, index) =>
-            `${index + 1}. ${(item.title || "Item").substring(0, 50)} x ${item.quantity}`
+          (item, i) =>
+            `${i + 1}. ${(item.title || "Item").substring(0, 50)} x ${item.quantity}`
         )
         .join("\n");
     }
 
     console.log("📦 Items:\n" + itemsText);
 
-    // ================================
-    // ✅ WA MANTRA TEMPLATE API CALL
-    // ================================
+    // ========================
+    // 🔥 WA MANTRA API CALL
+    // ========================
+    const payload = {
+      phone_number: phone,
+      template_name: "order_confirm_sn",
+      type: "template", // ✅ IMPORTANT FIX
+      template_params: [
+        String(name),
+        String(orderNumber),
+        String(itemsText),
+        String(totalPrice)
+      ]
+    };
+
+    console.log("📤 Sending payload:", payload);
+
     const response = await axios.post(
       `https://api.wamantra.com/api/${VENDOR_ID}/contact/send-template`,
-      {
-        phone_number: phone,
-
-        // ⚠️ EXACT template name
-        template_name: "order_confirm_sn",
-
-        // ⚠️ Variables mapping
-        template_params: [
-          name,         // {{1}}
-          orderNumber,  // {{2}}
-          itemsText,    // {{3}}
-          totalPrice    // {{4}}
-        ]
-      },
+      payload,
       {
         headers: {
           Authorization: `Bearer ${TOKEN}`,
           "Content-Type": "application/json"
-        }
+        },
+        timeout: 15000 // ⏱️ prevent hanging
       }
     );
 
     console.log("✅ WhatsApp Sent:", response.data);
 
   } catch (err) {
-    console.log("❌ ERROR:", err.response?.data || err.message);
+    console.log("❌ WA ERROR FULL:");
+    console.log(err.response?.data || err.message);
   }
 });
 
-// ✅ PORT
+// 🚀 START
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () =>
   console.log(`🚀 Server running on port ${PORT}`)
