@@ -16,22 +16,23 @@ if (!TOKEN) {
 // 🔁 Duplicate protection
 const processedWebhookIds = new Set();
 
-// 🧹 Cleanup
+// 🧹 Cleanup every 1 hour
 setInterval(() => {
   processedWebhookIds.clear();
   console.log("🧹 Cleared webhook cache");
 }, 1000 * 60 * 60);
 
-// ✅ TEST
+// ✅ TEST ROUTE
 app.get("/", (req, res) => {
   res.send("Server is running ✅");
 });
 
 // ✅ MAIN WEBHOOK
 app.post("/shopify", async (req, res) => {
-  try {
-    const data = req.body;
+  const data = req.body;
 
+  try {
+    // 🔁 Duplicate check
     const webhookId =
       req.headers["x-shopify-webhook-id"] || data?.id;
 
@@ -41,7 +42,7 @@ app.post("/shopify", async (req, res) => {
     }
     processedWebhookIds.add(webhookId);
 
-    // ⚡ respond fast
+    // ⚡ Respond fast
     res.sendStatus(200);
 
     console.log("📩 Order:", data?.order_number);
@@ -52,7 +53,7 @@ app.post("/shopify", async (req, res) => {
     const orderNumber = data?.order_number || data?.id;
     const totalPrice = parseInt(data?.total_price || "0");
 
-    // 📱 Phone fix
+    // 📱 Phone format fix
     let phone = null;
 
     if (phoneRaw) {
@@ -64,13 +65,13 @@ app.post("/shopify", async (req, res) => {
     }
 
     if (!phone) {
-      console.log("❌ No phone");
+      console.log("❌ No phone number found");
       return;
     }
 
     console.log("📲 Phone:", phone);
 
-    // 🛒 Items
+    // 🛒 Items build
     const lineItems = data?.line_items || [];
 
     let itemsText = "Items unavailable";
@@ -92,7 +93,7 @@ app.post("/shopify", async (req, res) => {
     const payload = {
       phone_number: phone,
       template_name: "order_confirm_sn",
-      type: "template", // ✅ IMPORTANT FIX
+      type: "template",
       template_params: [
         String(name),
         String(orderNumber),
@@ -101,7 +102,7 @@ app.post("/shopify", async (req, res) => {
       ]
     };
 
-    console.log("📤 Sending payload:", payload);
+    console.log("📤 Payload:", JSON.stringify(payload, null, 2));
 
     const response = await axios.post(
       `https://api.wamantra.com/api/${VENDOR_ID}/contact/send-template`,
@@ -111,19 +112,24 @@ app.post("/shopify", async (req, res) => {
           Authorization: `Bearer ${TOKEN}`,
           "Content-Type": "application/json"
         },
-        timeout: 15000 // ⏱️ prevent hanging
+        timeout: 15000
       }
     );
 
     console.log("✅ WhatsApp Sent:", response.data);
 
   } catch (err) {
-    console.log("❌ WA ERROR FULL:");
-    console.log(err.response?.data || err.message);
+    // 🔥 FINAL DEBUG BLOCK
+    console.log("❌ ERROR STATUS:", err.response?.status);
+
+    console.log("❌ ERROR DATA:");
+    console.dir(err.response?.data, { depth: null });
+
+    console.log("❌ ERROR MESSAGE:", err.message);
   }
 });
 
-// 🚀 START
+// 🚀 START SERVER
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () =>
   console.log(`🚀 Server running on port ${PORT}`)
