@@ -16,7 +16,7 @@ if (!TOKEN) {
 // 🔁 Duplicate protection
 const processedWebhookIds = new Set();
 
-// 🧹 Cleanup every 1 hour
+// 🧹 Cleanup
 setInterval(() => {
   processedWebhookIds.clear();
   console.log("🧹 Cache cleared");
@@ -87,11 +87,12 @@ app.post("/shopify", async (req, res) => {
     console.log("📦 Items:\n" + itemsText);
 
     // =========================
-    // 🔥 TEMPLATE SEND ONLY
+    // 🔥 TEMPLATE SEND (FINAL FIX)
     // =========================
     const payload = {
       phone_number: phone,
-      template_name: "order_confirm_sn", // ⚠️ exact template name
+      template_name: "order_confirm_sn",
+      language: "en", // ✅ IMPORTANT FIX
       template_params: [
         String(name),
         String(orderNumber),
@@ -100,7 +101,7 @@ app.post("/shopify", async (req, res) => {
       ]
     };
 
-    console.log("📤 Payload:", payload);
+    console.log("📤 Payload:", JSON.stringify(payload, null, 2));
 
     const response = await axios.post(
       `https://api.wamantra.com/api/${VENDOR_ID}/contact/send-template`,
