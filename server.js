@@ -4,30 +4,139 @@ const axios = require("axios");
 const app = express();
 app.use(express.json());
 
-// ✅ FINAL VALUES
-const TOKEN = "8JpOQubQbgetFvVkFzyut0C1VsxcUEwLeyB0SEK0DLdFnrjdQEwtcW0f5eyEe7ay";
+// 🔐 ENV
+const TOKEN = process.env.TOKEN;
 const VENDOR_ID = "a6da9368-b550-4232-b4b4-fb3a73f8f30b";
 
+if (!TOKEN) {
+  console.error("❌ TOKEN missing");
+  process.exit(1);
+}
+
+// 🔁 Duplicate protection
+const processedWebhookIds = new Set();
+
+// 🧹 Cleanup
+setInterval(() => {
+  processedWebhookIds.clear();
+  console.log("🧹 Cache cleared");
+}, 1000 * 60 * 60);
+
+// ✅ TEST ROUTE
+app.get("/", (req, res) => {
+  res.send("Server is running ✅");
+});
+
+// ✅ WEBHOOK
 app.post("/shopify", async (req, res) => {
+  const data = req.body;
+
   try {
-    const data = req.body;
+    const webhookId =
+      req.headers["x-shopify-webhook-id"] || data?.id;
 
-    const phoneRaw = data?.customer?.phone;
+    if (processedWebhookIds.has(webhookId)) {
+      console.log("⚠️ Duplicate:", webhookId);
+      return res.sendStatus(200);
+    }
+    processedWebhookIds.add(webhookId);
+
+    res.sendStatus(200);
+
+    console.log("📩 Order:", data?.order_number);
+
+    // 👤 Customer
+    const phoneRaw = data?.customer?.phone || data?.phone;
     const name = data?.customer?.first_name || "Customer";
-    const orderId = data?.id;
+    const orderNumber = data?.order_number || data?.id;
+    const totalPrice = parseInt(data?.total_price || "0");
 
-    // ✅ SAFETY: phone format fix
-    const phone = phoneRaw ? phoneRaw.replace("+", "") : null;
+    // 📱 Phone fix
+    let phone = null;
+    if (phoneRaw) {
+      phone = phoneRaw.replace(/\D/g, "");
+      if (phone.length === 10) phone = "91" + phone;
+    }
 
-    console.log("Incoming Data:", data);
-    console.log("Phone:", phone);
+    if (!phone) {
+      console.log("❌ No phone");
+      return;
+    }
 
-    if (phone) {
-      const response = await axios.post(
+    console.log("📲 Phone:", phone);
+
+    // 🛒 Items
+    const lineItems = data?.line_items || [];
+
+    let itemsText = "Items unavailable";
+    if (lineItems.length > 0) {
+      itemsText = lineItems
+        .map(
+          (item, i) =>
+            `${i + 1}. ${(item.title || "Item").substring(0, 50)} x ${item.quantity}`
+        )
+        .join("\n");
+    }
+
+    console.log("📦 Items:\n" + itemsText);
+
+    // =========================
+    // 🔥 TRY TEMPLATE FIRST
+    // =========================
+    try {
+      console.log("🚀 Trying TEMPLATE...");
+
+      const templateRes = await axios.post(
+        `https://api.wamantra.com/api/${VENDOR_ID}/contact/send-template`,
+        {
+          phone_number: phone,
+          template_name: "order_confirm_sn",
+          template_params: [
+            String(name),
+            String(orderNumber),
+            String(itemsText),
+            String(totalPrice)
+          ]
+        },
+        {
+          headers: {
+            Authorization: `Bearer ${TOKEN}`,
+            "Content-Type": "application/json"
+          },
+          timeout: 15000
+        }
+      );
+
+      console.log("✅ TEMPLATE SENT:", templateRes.data);
+      return;
+
+    } catch (templateErr) {
+      console.log("❌ TEMPLATE FAILED:", templateErr.response?.status);
+    }
+
+    // =========================
+    // 🔥 FALLBACK → NORMAL MESSAGE
+    // =========================
+    try {
+      console.log("🔁 Sending NORMAL message...");
+
+      const msg = `Hi ${name} 👋
+
+Your order #${orderNumber} is CONFIRMED ✅
+
+🛒 Items:
+${itemsText}
+
+💰 Total: ₹${totalPrice}
+
+Thank you for shopping with us!
+Strong Nation Supps 💪`;
+
+      const normalRes = await axios.post(
         `https://api.wamantra.com/api/${VENDOR_ID}/contact/send-message`,
         {
           phone_number: phone,
-          message_body: `Hi ${name}, your order #${orderId} is confirmed ✅`
+          message: msg
         },
         {
           headers: {
@@ -37,20 +146,20 @@ app.post("/shopify", async (req, res) => {
         }
       );
 
-      // ✅ DEBUG RESPONSE
-      console.log("Wamantra Response:", response.data);
-    } else {
-      console.log("No phone number found");
+      console.log("✅ NORMAL MESSAGE SENT:", normalRes.data);
+
+    } catch (msgErr) {
+      console.log("❌ NORMAL MESSAGE FAILED:");
+      console.dir(msgErr.response?.data, { depth: null });
     }
 
-    res.sendStatus(200);
   } catch (err) {
-    console.log("ERROR:", err.response?.data || err.message);
-    res.sendStatus(500);
+    console.log("❌ SERVER ERROR:", err.message);
   }
 });
 
-// ✅ IMPORTANT (Render ke liye)
-const PORT = process.env.PORT || 3000;                                                                  
-app.listen(PORT, () => console.log(`Server running on ${PORT}`));
-
+// 🚀 START
+const PORT = process.env.PORT || 3000;
+app.listen(PORT, () =>
+  console.log(`🚀 Server running on port ${PORT}`)
+);
