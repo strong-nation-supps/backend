@@ -16,18 +16,18 @@ if (!TOKEN) {
 // 🔁 Duplicate protection
 const processedWebhookIds = new Set();
 
-// 🧹 Cleanup
+// 🧹 Cleanup every 1 hour
 setInterval(() => {
   processedWebhookIds.clear();
   console.log("🧹 Cache cleared");
 }, 1000 * 60 * 60);
 
-// ✅ TEST ROUTE
+// ✅ HEALTH CHECK
 app.get("/", (req, res) => {
   res.send("Server is running ✅");
 });
 
-// ✅ WEBHOOK
+// ✅ SHOPIFY WEBHOOK
 app.post("/shopify", async (req, res) => {
   const data = req.body;
 
@@ -41,15 +41,21 @@ app.post("/shopify", async (req, res) => {
     }
     processedWebhookIds.add(webhookId);
 
+    // ✅ Respond immediately (Shopify best practice)
     res.sendStatus(200);
 
     console.log("📩 Order:", data?.order_number);
 
     // 👤 Customer
-    const phoneRaw = data?.customer?.phone || data?.phone;
+    const phoneRaw =
+      data?.customer?.phone ||
+      data?.billing_address?.phone ||
+      data?.shipping_address?.phone ||
+      data?.phone;
+
     const name = data?.customer?.first_name || "Customer";
     const orderNumber = data?.order_number || data?.id;
-    const totalPrice = parseInt(data?.total_price || "0");
+    const totalPrice = data?.total_price || "0";
 
     // 📱 Phone fix
     let phone = null;
@@ -81,7 +87,7 @@ app.post("/shopify", async (req, res) => {
     console.log("📦 Items:\n" + itemsText);
 
     // =========================
-    // 🔥 TRY TEMPLATE FIRST
+    // 🔥 OPTIONAL TEMPLATE (can fail safely)
     // =========================
     try {
       console.log("🚀 Trying TEMPLATE...");
@@ -90,7 +96,7 @@ app.post("/shopify", async (req, res) => {
         `https://api.wamantra.com/api/${VENDOR_ID}/contact/send-template`,
         {
           phone_number: phone,
-          template_name: "order_confirm_sn",
+          template_name: "order_confirm_sn", // 🔁 change if needed
           template_params: [
             String(name),
             String(orderNumber),
@@ -103,7 +109,7 @@ app.post("/shopify", async (req, res) => {
             Authorization: `Bearer ${TOKEN}`,
             "Content-Type": "application/json"
           },
-          timeout: 15000
+          timeout: 10000
         }
       );
 
@@ -115,7 +121,7 @@ app.post("/shopify", async (req, res) => {
     }
 
     // =========================
-    // 🔥 FALLBACK → NORMAL MESSAGE
+    // 🔥 FALLBACK NORMAL MESSAGE
     // =========================
     try {
       console.log("🔁 Sending NORMAL message...");
@@ -136,7 +142,7 @@ Strong Nation Supps 💪`;
         `https://api.wamantra.com/api/${VENDOR_ID}/contact/send-message`,
         {
           phone_number: phone,
-          message: msg
+          message_body: msg   // ✅ FIXED HERE
         },
         {
           headers: {
