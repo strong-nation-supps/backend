@@ -9,7 +9,7 @@ const TOKEN = process.env.TOKEN;
 const VENDOR_ID = "a6da9368-b550-4232-b4b4-fb3a73f8f30b";
 
 if (!TOKEN) {
-  console.error("❌ TOKEN missing");
+  console.error("❌ TOKEN missing in environment variables");
   process.exit(1);
 }
 
@@ -22,7 +22,7 @@ setInterval(() => {
   console.log("🧹 Cache cleared");
 }, 1000 * 60 * 60);
 
-// ✅ TEST ROUTE
+// ✅ TEST
 app.get("/", (req, res) => {
   res.send("Server is running ✅");
 });
@@ -41,6 +41,7 @@ app.post("/shopify", async (req, res) => {
     }
     processedWebhookIds.add(webhookId);
 
+    // ⚡ Fast response
     res.sendStatus(200);
 
     console.log("📩 Order:", data?.order_number);
@@ -55,7 +56,9 @@ app.post("/shopify", async (req, res) => {
     let phone = null;
     if (phoneRaw) {
       phone = phoneRaw.replace(/\D/g, "");
-      if (phone.length === 10) phone = "91" + phone;
+      if (phone.length === 10) {
+        phone = "91" + phone;
+      }
     }
 
     if (!phone) {
@@ -81,80 +84,39 @@ app.post("/shopify", async (req, res) => {
     console.log("📦 Items:\n" + itemsText);
 
     // =========================
-    // 🔥 TRY TEMPLATE FIRST
+    // 🔥 WA MANTRA API CALL
     // =========================
-    try {
-      console.log("🚀 Trying TEMPLATE...");
+    const payload = {
+      phone_number: phone,
+      template_name: "order_confirm_sn",
+      template_params: [
+        String(name),
+        String(orderNumber),
+        String(itemsText),
+        String(totalPrice)
+      ]
+    };
 
-      const templateRes = await axios.post(
-        `https://api.wamantra.com/api/${VENDOR_ID}/contact/send-template`,
-        {
-          phone_number: phone,
-          template_name: "order_confirm_sn",
-          template_params: [
-            String(name),
-            String(orderNumber),
-            String(itemsText),
-            String(totalPrice)
-          ]
+    console.log("📤 Payload:", payload);
+
+    const response = await axios.post(
+      `https://api.wamantra.com/api/${VENDOR_ID}/contact/send-template`,
+      payload,
+      {
+        headers: {
+          Authorization: `Bearer ${TOKEN}`,
+          "Content-Type": "application/json"
         },
-        {
-          headers: {
-            Authorization: `Bearer ${TOKEN}`,
-            "Content-Type": "application/json"
-          },
-          timeout: 15000
-        }
-      );
+        timeout: 15000
+      }
+    );
 
-      console.log("✅ TEMPLATE SENT:", templateRes.data);
-      return;
-
-    } catch (templateErr) {
-      console.log("❌ TEMPLATE FAILED:", templateErr.response?.status);
-    }
-
-    // =========================
-    // 🔥 FALLBACK → NORMAL MESSAGE
-    // =========================
-    try {
-      console.log("🔁 Sending NORMAL message...");
-
-      const msg = `Hi ${name} 👋
-
-Your order #${orderNumber} is CONFIRMED ✅
-
-🛒 Items:
-${itemsText}
-
-💰 Total: ₹${totalPrice}
-
-Thank you for shopping with us!
-Strong Nation Supps 💪`;
-
-      const normalRes = await axios.post(
-        `https://api.wamantra.com/api/${VENDOR_ID}/contact/send-message`,
-        {
-          phone_number: phone,
-          message: msg
-        },
-        {
-          headers: {
-            Authorization: `Bearer ${TOKEN}`,
-            "Content-Type": "application/json"
-          }
-        }
-      );
-
-      console.log("✅ NORMAL MESSAGE SENT:", normalRes.data);
-
-    } catch (msgErr) {
-      console.log("❌ NORMAL MESSAGE FAILED:");
-      console.dir(msgErr.response?.data, { depth: null });
-    }
+    console.log("✅ WhatsApp Sent:", response.data);
 
   } catch (err) {
-    console.log("❌ SERVER ERROR:", err.message);
+    console.log("❌ ERROR STATUS:", err.response?.status);
+    console.dir(err.response?.data, { depth: null });
+    console.log("❌ ERROR MESSAGE:", err.message);
   }
 });
 
