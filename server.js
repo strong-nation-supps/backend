@@ -41,12 +41,12 @@ app.post("/shopify", async (req, res) => {
     }
     processedWebhookIds.add(webhookId);
 
-    // ⚡ Respond fast (VERY IMPORTANT for Shopify)
+    // ⚡ Respond fast
     res.sendStatus(200);
 
     console.log("📩 Order:", data?.order_number);
 
-    // 👤 Customer Details
+    // 👤 Customer
     const phoneRaw =
       data?.customer?.phone ||
       data?.billing_address?.phone ||
@@ -78,16 +78,16 @@ app.post("/shopify", async (req, res) => {
     if (lineItems.length > 0) {
       itemsText = lineItems
         .map(
-          (item, i) =>
-            `${i + 1}. ${(item.title || "Item").substring(0, 50)} x ${item.quantity}`
+          (item) =>
+            `${(item.title || "Item").substring(0, 40)} x${item.quantity}`
         )
-        .join("\n");
+        .join(", "); // ✅ FIXED (NO NEWLINE)
     }
 
-    console.log("📦 Items:\n" + itemsText);
+    console.log("📦 Items:", itemsText);
 
     // =========================
-    // 🔥 WA MANTRA PAYLOAD (CORRECT)
+    // 🔥 WA MANTRA PAYLOAD
     // =========================
     const payload = {
       phone_number: phone,
@@ -100,10 +100,10 @@ app.post("/shopify", async (req, res) => {
       field_4: String(totalPrice)
     };
 
-    console.log("📤 Sending payload:", JSON.stringify(payload, null, 2));
+    console.log("📤 Sending:", JSON.stringify(payload, null, 2));
 
     // =========================
-    // 🚀 API CALL (FIXED URL)
+    // 🚀 API CALL
     // =========================
     const response = await axios.post(
       `https://api.wamantra.com/api/${VENDOR_ID}/contact/send-template-message`,
@@ -117,7 +117,7 @@ app.post("/shopify", async (req, res) => {
       }
     );
 
-    console.log("✅ TEMPLATE SENT SUCCESS:", response.data);
+    console.log("✅ SUCCESS:", response.data);
 
   } catch (err) {
     console.log("❌ ERROR STATUS:", err.response?.status);
