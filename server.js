@@ -81,7 +81,7 @@ app.post("/shopify", async (req, res) => {
           (item) =>
             `${(item.title || "Item").substring(0, 40)} x${item.quantity}`
         )
-        .join(", "); // ✅ FIXED (NO NEWLINE)
+        .join(", ");
     }
 
     console.log("📦 Items:", itemsText);
@@ -125,6 +125,87 @@ app.post("/shopify", async (req, res) => {
     console.log("❌ ERROR MESSAGE:", err.message);
   }
 });
+
+
+// 🔥 ABANDONED CART (24h delay) — ADDED ONLY THIS PART
+app.post("/checkout", async (req, res) => {
+  const data = req.body;
+
+  try {
+    res.sendStatus(200);
+
+    console.log("🛒 Checkout captured");
+
+    const phoneRaw =
+      data?.phone ||
+      data?.customer?.phone ||
+      data?.billing_address?.phone;
+
+    const name = data?.customer?.first_name || "Customer";
+    const totalPrice = data?.total_price || "0";
+
+    let phone = null;
+    if (phoneRaw) {
+      phone = phoneRaw.replace(/\D/g, "");
+      if (phone.length === 10) phone = "91" + phone;
+    }
+
+    if (!phone) {
+      console.log("❌ No phone");
+      return;
+    }
+
+    const items = data?.line_items || [];
+
+    let itemsText = "Your cart items";
+    if (items.length > 0) {
+      itemsText = items
+        .map(item =>
+          `${(item.title || "Item").substring(0, 40)} x${item.quantity}`
+        )
+        .join(", ");
+    }
+
+    console.log("📲 Will send after 24h:", phone);
+
+    // ⏳ 24 HOURS DELAY
+    setTimeout(async () => {
+      try {
+        console.log("⏰ Sending abandoned message...");
+
+        const payload = {
+          phone_number: phone,
+          template_name: "abandoned_cart_sn",
+          template_language: "en",
+
+          field_1: String(name),
+          field_2: String(itemsText),
+          field_3: String(totalPrice)
+        };
+
+        await axios.post(
+          `https://api.wamantra.com/api/${VENDOR_ID}/contact/send-template-message`,
+          payload,
+          {
+            headers: {
+              Authorization: `Bearer ${TOKEN}`,
+              "Content-Type": "application/json"
+            }
+          }
+        );
+
+        console.log("✅ Abandoned sent");
+
+      } catch (err) {
+        console.log("❌ Abandoned ERROR:", err.response?.data || err.message);
+      }
+    }, 24 * 60 * 60 * 1000);
+
+  } catch (err) {
+    console.log("❌ ERROR:", err.message);
+  }
+});
+
 
 // 🚀 START SERVER
 const PORT = process.env.PORT || 3000;
