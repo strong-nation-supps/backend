@@ -41,12 +41,10 @@ app.post("/shopify", async (req, res) => {
     }
     processedWebhookIds.add(webhookId);
 
-    // ⚡ Respond fast
     res.sendStatus(200);
 
     console.log("📩 Order:", data?.order_number);
 
-    // 👤 Customer
     const phoneRaw =
       data?.customer?.phone ||
       data?.billing_address?.phone ||
@@ -57,7 +55,6 @@ app.post("/shopify", async (req, res) => {
     const orderNumber = data?.order_number || data?.id;
     const totalPrice = data?.total_price || "0";
 
-    // 📱 Phone formatting
     let phone = null;
     if (phoneRaw) {
       phone = phoneRaw.replace(/\D/g, "");
@@ -69,9 +66,6 @@ app.post("/shopify", async (req, res) => {
       return;
     }
 
-    console.log("📲 Phone:", phone);
-
-    // 🛒 Line Items
     const lineItems = data?.line_items || [];
 
     let itemsText = "Items unavailable";
@@ -84,11 +78,6 @@ app.post("/shopify", async (req, res) => {
         .join(", ");
     }
 
-    console.log("📦 Items:", itemsText);
-
-    // =========================
-    // 🔥 WA MANTRA PAYLOAD
-    // =========================
     const payload = {
       phone_number: phone,
       template_name: "order_confirm_sn",
@@ -100,34 +89,19 @@ app.post("/shopify", async (req, res) => {
       field_4: String(totalPrice)
     };
 
-    console.log("📤 Sending:", JSON.stringify(payload, null, 2));
+    console.log("🧪 TEST MODE - ORDER PAYLOAD:");
+    console.log(JSON.stringify(payload, null, 2));
 
-    // =========================
-    // 🚀 API CALL
-    // =========================
-    const response = await axios.post(
-      `https://api.wamantra.com/api/${VENDOR_ID}/contact/send-template-message`,
-      payload,
-      {
-        headers: {
-          Authorization: `Bearer ${TOKEN}`,
-          "Content-Type": "application/json"
-        },
-        timeout: 15000
-      }
-    );
-
-    console.log("✅ SUCCESS:", response.data);
+    // ❌ API CALL DISABLED FOR TEST
+    console.log("🚫 WhatsApp API call skipped (TEST MODE)");
 
   } catch (err) {
-    console.log("❌ ERROR STATUS:", err.response?.status);
-    console.dir(err.response?.data, { depth: null });
-    console.log("❌ ERROR MESSAGE:", err.message);
+    console.log("❌ ERROR:", err.message);
   }
 });
 
 
-// 🔥 ABANDONED CART (24h delay) — ADDED ONLY THIS PART
+// 🔥 ABANDONED CART (TEST MODE)
 app.post("/checkout", async (req, res) => {
   const data = req.body;
 
@@ -166,40 +140,26 @@ app.post("/checkout", async (req, res) => {
         .join(", ");
     }
 
-    console.log("📲 Will send after 24h:", phone);
+    console.log("📲 Will simulate send after delay:", phone);
 
-    // ⏳ 24 HOURS DELAY
-    setTimeout(async () => {
-      try {
-        console.log("⏰ Sending abandoned message...");
+    // ⏳ SHORT DELAY FOR TEST (5 sec)
+    setTimeout(() => {
+      const payload = {
+        phone_number: phone,
+        template_name: "abandoned_cart_sn",
+        template_language: "en",
 
-        const payload = {
-          phone_number: phone,
-          template_name: "abandoned_cart_sn",
-          template_language: "en",
+        field_1: String(name),
+        field_2: String(itemsText),
+        field_3: String(totalPrice)
+      };
 
-          field_1: String(name),
-          field_2: String(itemsText),
-          field_3: String(totalPrice)
-        };
+      console.log("🧪 TEST MODE - ABANDONED PAYLOAD:");
+      console.log(JSON.stringify(payload, null, 2));
 
-        await axios.post(
-          `https://api.wamantra.com/api/${VENDOR_ID}/contact/send-template-message`,
-          payload,
-          {
-            headers: {
-              Authorization: `Bearer ${TOKEN}`,
-              "Content-Type": "application/json"
-            }
-          }
-        );
+      console.log("🚫 WhatsApp API call skipped (TEST MODE)");
 
-        console.log("✅ Abandoned sent");
-
-      } catch (err) {
-        console.log("❌ Abandoned ERROR:", err.response?.data || err.message);
-      }
-    }, 24 * 60 * 60 * 1000);
+    }, 5000); // ⏳ 5 sec test
 
   } catch (err) {
     console.log("❌ ERROR:", err.message);
