@@ -78,16 +78,15 @@ app.post("/shopify", async (req, res) => {
         .join(", ");
     }
 
-    const payload = {
-      phone_number: phone,
-      template_name: "abandoned_cart_final_template",
-      template_language: "en_US",
+   const payload = {
+  phone_number: phone,
+  template_name: "cart_msg",
+  template_language: "en_US",
 
-      field_1: String(name),
-      field_2: String(orderNumber),
-      field_3: String(itemsText),
-      field_4: String(totalPrice)
-    };
+  field_1: String(name),        // {{1}}
+  field_2: String(itemsText),   // {{2}}
+  field_3: String(totalPrice)   // {{3}}
+};
 
     console.log("📤 Sending Order Template:", JSON.stringify(payload, null, 2));
 
