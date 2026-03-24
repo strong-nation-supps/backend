@@ -16,7 +16,7 @@ if (!TOKEN) {
 // 🔁 Duplicate protection
 const processedWebhookIds = new Set();
 
-// 🧹 Cleanup
+// 🧹 Cleanup every 1 hour
 setInterval(() => {
   processedWebhookIds.clear();
   console.log("🧹 Cache cleared");
@@ -41,12 +41,12 @@ app.post("/shopify", async (req, res) => {
     }
     processedWebhookIds.add(webhookId);
 
-    // ⚡ Respond fast
+    // ⚡ Respond fast (VERY IMPORTANT for Shopify)
     res.sendStatus(200);
 
     console.log("📩 Order:", data?.order_number);
 
-    // 👤 Customer
+    // 👤 Customer Details
     const phoneRaw =
       data?.customer?.phone ||
       data?.billing_address?.phone ||
@@ -57,7 +57,7 @@ app.post("/shopify", async (req, res) => {
     const orderNumber = data?.order_number || data?.id;
     const totalPrice = data?.total_price || "0";
 
-    // 📱 Phone fix
+    // 📱 Phone formatting
     let phone = null;
     if (phoneRaw) {
       phone = phoneRaw.replace(/\D/g, "");
@@ -65,13 +65,13 @@ app.post("/shopify", async (req, res) => {
     }
 
     if (!phone) {
-      console.log("❌ No phone");
+      console.log("❌ No phone found");
       return;
     }
 
     console.log("📲 Phone:", phone);
 
-    // 🛒 Items
+    // 🛒 Line Items
     const lineItems = data?.line_items || [];
 
     let itemsText = "Items unavailable";
@@ -87,35 +87,37 @@ app.post("/shopify", async (req, res) => {
     console.log("📦 Items:\n" + itemsText);
 
     // =========================
-    // 🔥 TEMPLATE SEND (FINAL FIX)
+    // 🔥 WA MANTRA PAYLOAD (CORRECT)
     // =========================
     const payload = {
       phone_number: phone,
       template_name: "order_confirm_sn",
-      language: "en", // ✅ IMPORTANT FIX
-      template_params: [
-        String(name),
-        String(orderNumber),
-        String(itemsText),
-        String(totalPrice)
-      ]
+      template_language: "en",
+
+      field_1: String(name),
+      field_2: String(orderNumber),
+      field_3: String(itemsText),
+      field_4: String(totalPrice)
     };
 
-    console.log("📤 Payload:", JSON.stringify(payload, null, 2));
+    console.log("📤 Sending payload:", JSON.stringify(payload, null, 2));
 
+    // =========================
+    // 🚀 API CALL (FIXED URL)
+    // =========================
     const response = await axios.post(
-      `https://api.wamantra.com/api/${VENDOR_ID}/contact/send-template`,
+      `https://api.wamantra.com/api/${VENDOR_ID}/contact/send-template-message`,
       payload,
       {
         headers: {
           Authorization: `Bearer ${TOKEN}`,
           "Content-Type": "application/json"
         },
-        timeout: 10000
+        timeout: 15000
       }
     );
 
-    console.log("✅ TEMPLATE SENT:", response.data);
+    console.log("✅ TEMPLATE SENT SUCCESS:", response.data);
 
   } catch (err) {
     console.log("❌ ERROR STATUS:", err.response?.status);
@@ -124,7 +126,7 @@ app.post("/shopify", async (req, res) => {
   }
 });
 
-// 🚀 START
+// 🚀 START SERVER
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () =>
   console.log(`🚀 Server running on port ${PORT}`)
