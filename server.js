@@ -27,7 +27,7 @@ app.get("/", (req, res) => {
   res.send("Server is running ✅");
 });
 
-// ✅ SHOPIFY WEBHOOK
+// ✅ SHOPIFY WEBHOOK (ORDER CONFIRMATION)
 app.post("/shopify", async (req, res) => {
   const data = req.body;
 
@@ -41,12 +41,10 @@ app.post("/shopify", async (req, res) => {
     }
     processedWebhookIds.add(webhookId);
 
-    // ⚡ Respond fast
     res.sendStatus(200);
 
     console.log("📩 Order:", data?.order_number);
 
-    // 👤 Customer
     const phoneRaw =
       data?.customer?.phone ||
       data?.billing_address?.phone ||
@@ -57,7 +55,6 @@ app.post("/shopify", async (req, res) => {
     const orderNumber = data?.order_number || data?.id;
     const totalPrice = data?.total_price || "0";
 
-    // 📱 Phone formatting
     let phone = null;
     if (phoneRaw) {
       phone = phoneRaw.replace(/\D/g, "");
@@ -69,9 +66,6 @@ app.post("/shopify", async (req, res) => {
       return;
     }
 
-    console.log("📲 Phone:", phone);
-
-    // 🛒 Line Items
     const lineItems = data?.line_items || [];
 
     let itemsText = "Items unavailable";
@@ -84,14 +78,9 @@ app.post("/shopify", async (req, res) => {
         .join(", ");
     }
 
-    console.log("📦 Items:", itemsText);
-
-    // =========================
-    // 🔥 WA MANTRA PAYLOAD
-    // =========================
     const payload = {
       phone_number: phone,
-      template_name: "abandoned_cart_final_template",
+      template_name: "order_confirm_sn",
       template_language: "en",
 
       field_1: String(name),
@@ -100,11 +89,8 @@ app.post("/shopify", async (req, res) => {
       field_4: String(totalPrice)
     };
 
-    console.log("📤 Sending:", JSON.stringify(payload, null, 2));
+    console.log("📤 Sending Order Template:", JSON.stringify(payload, null, 2));
 
-    // =========================
-    // 🚀 API CALL
-    // =========================
     const response = await axios.post(
       `https://api.wamantra.com/api/${VENDOR_ID}/contact/send-template-message`,
       payload,
@@ -117,17 +103,15 @@ app.post("/shopify", async (req, res) => {
       }
     );
 
-    console.log("✅ SUCCESS:", response.data);
+    console.log("✅ ORDER MESSAGE SENT:", response.data);
 
   } catch (err) {
-    console.log("❌ ERROR STATUS:", err.response?.status);
-    console.dir(err.response?.data, { depth: null });
-    console.log("❌ ERROR MESSAGE:", err.message);
+    console.log("❌ ORDER ERROR:", err.response?.data || err.message);
   }
 });
 
 
-// 🔥 ABANDONED CART (24h delay) — ADDED ONLY THIS PART
+// 🔥 ABANDONED CART (1 MIN TEST MODE LIVE)
 app.post("/checkout", async (req, res) => {
   const data = req.body;
 
@@ -166,9 +150,9 @@ app.post("/checkout", async (req, res) => {
         .join(", ");
     }
 
-    console.log("📲 Will send after 24h:", phone);
+    console.log("📲 Will send after 1 min:", phone);
 
-    // ⏳ 24 HOURS DELAY
+    // ⏳ 1 MINUTE DELAY (TESTING)
     setTimeout(async () => {
       try {
         console.log("⏰ Sending abandoned message...");
@@ -183,7 +167,9 @@ app.post("/checkout", async (req, res) => {
           field_3: String(totalPrice)
         };
 
-        await axios.post(
+        console.log("📤 Sending Abandoned:", JSON.stringify(payload, null, 2));
+
+        const response = await axios.post(
           `https://api.wamantra.com/api/${VENDOR_ID}/contact/send-template-message`,
           payload,
           {
@@ -194,12 +180,12 @@ app.post("/checkout", async (req, res) => {
           }
         );
 
-        console.log("✅ Abandoned sent");
+        console.log("✅ ABANDONED MESSAGE SENT:", response.data);
 
       } catch (err) {
-        console.log("❌ Abandoned ERROR:", err.response?.data || err.message);
+        console.log("❌ ABANDONED ERROR:", err.response?.data || err.message);
       }
-    }, 24 * 60 * 60 * 1000);
+    }, 60000); // ⏳ 1 MIN
 
   } catch (err) {
     console.log("❌ ERROR:", err.message);
