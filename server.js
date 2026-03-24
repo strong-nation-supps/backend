@@ -80,8 +80,8 @@ app.post("/shopify", async (req, res) => {
 
     const payload = {
       phone_number: phone,
-      template_name: "order_confirm_sn",
-      template_language: "en",
+      template_name: "abandoned_cart_final_template",
+      template_language: "en_US",
 
       field_1: String(name),
       field_2: String(orderNumber),
@@ -160,7 +160,7 @@ app.post("/checkout", async (req, res) => {
         const payload = {
           phone_number: phone,
           template_name: "abandoned_cart_sn",
-          template_language: "en",
+          template_language: "en_US",
 
           field_1: String(name),
           field_2: String(itemsText),
