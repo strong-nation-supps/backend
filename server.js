@@ -53,6 +53,7 @@ app.post("/shopify", async (req, res) => {
       data?.phone;
 
     const name = data?.customer?.first_name || "Customer";
+    const orderNumber = data?.order_number || data?.id; // ✅ FIX
     const totalPrice = parseFloat(data?.total_price || "0").toFixed(0);
 
     let phone = null;
@@ -83,17 +84,16 @@ app.post("/shopify", async (req, res) => {
       }
     }
 
-    // ✅ FIXED IMAGE (YOUR LINK)
-    const productImage = "https://cdn.shopify.com/s/files/1/0651/8492/3725/files/WhatsApp_Image_2026-03-18_at_1.39.15_PM.jpg?v=1774416591";
-
+   
     const payload = {
       phone_number: phone,
       template_name: "order_confirm_sn",
       template_language: "en",
 
-      header_image: productImage, // ✅ ADDED
+      header_image: productImage,
+
       field_1: String(name),
-      field_2: String(orderNumber),
+      field_2: String(orderNumber), // ✅ FIXED
       field_3: String(itemsText),
       field_4: String(totalPrice)
     };
@@ -120,7 +120,7 @@ app.post("/shopify", async (req, res) => {
 });
 
 
-// 🔥 ABANDONED CART (1 MIN TEST MODE)
+// 🔥 ABANDONED CART (24 HOURS DELAY — UNCHANGED)
 app.post("/checkout", async (req, res) => {
   const data = req.body;
 
@@ -174,12 +174,10 @@ app.post("/checkout", async (req, res) => {
 
     console.log("📲 Will send after 24 hour:", phone);
 
-    // ⏳ 1 MINUTE DELAY (TESTING)
     setTimeout(async () => {
       try {
         console.log("⏰ Sending abandoned message...");
 
-        // ✅ FIXED IMAGE (YOUR LINK)
         const productImage = "https://cdn.shopify.com/s/files/1/0651/8492/3725/files/41_1-Web-Banner_jpg.jpg?v=1774432527";
 
         const payload = {
@@ -187,7 +185,7 @@ app.post("/checkout", async (req, res) => {
           template_name: "cart_1",
           template_language: "en",
 
-          header_image: productImage, // ✅ ADDED
+          header_image: productImage,
 
           field_1: String(name),
           field_2: String(itemsText),
@@ -212,7 +210,7 @@ app.post("/checkout", async (req, res) => {
       } catch (err) {
         console.log("❌ ABANDONED ERROR:", err.response?.data || err.message);
       }
-    }, 86400000);
+    }, 86400000); // 24 hours
 
   } catch (err) {
     console.log("❌ ERROR:", err.message);
@@ -225,3 +223,4 @@ const PORT = process.env.PORT || 3000;
 app.listen(PORT, () =>
   console.log(`🚀 Server running on port ${PORT}`)
 );
+
