@@ -88,7 +88,7 @@ app.post("/shopify", async (req, res) => {
 
     const payload = {
       phone_number: phone,
-      template_name: "strong_nation_pune_distributor_final",
+      template_name: "cart_1",
       template_language: "en",
 
       header_image: productImage, // ✅ ADDED
@@ -184,7 +184,7 @@ app.post("/checkout", async (req, res) => {
 
         const payload = {
           phone_number: phone,
-          template_name: "strong_nation_pune_distributor_final",
+          template_name: "cart_1",
           template_language: "en",
 
           header_image: productImage, // ✅ ADDED
