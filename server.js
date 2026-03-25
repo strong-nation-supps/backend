@@ -53,7 +53,6 @@ app.post("/shopify", async (req, res) => {
       data?.phone;
 
     const name = data?.customer?.first_name || "Customer";
-    const orderNumber = data?.order_number || data?.id;
     const totalPrice = parseFloat(data?.total_price || "0").toFixed(0);
 
     let phone = null;
@@ -84,10 +83,15 @@ app.post("/shopify", async (req, res) => {
       }
     }
 
+    // ✅ FIXED IMAGE (YOUR LINK)
+    const productImage = "https://cdn.shopify.com/s/files/1/0651/8492/3725/files/WhatsApp_Image_2026-03-18_at_1.39.15_PM.jpg?v=1774416591";
+
     const payload = {
       phone_number: phone,
-      template_name: "strong_nation_pune_distributor_final", // keep as-is if you're testing same template
+      template_name: "strong_nation_pune_distributor_final",
       template_language: "en",
+
+      header_image: productImage, // ✅ ADDED
 
       field_1: String(name),
       field_2: String(itemsText),
@@ -175,10 +179,15 @@ app.post("/checkout", async (req, res) => {
       try {
         console.log("⏰ Sending abandoned message...");
 
+        // ✅ FIXED IMAGE (YOUR LINK)
+        const productImage = "https://cdn.shopify.com/s/files/1/0651/8492/3725/files/WhatsApp_Image_2026-03-18_at_1.39.15_PM.jpg?v=1774416591";
+
         const payload = {
           phone_number: phone,
           template_name: "strong_nation_pune_distributor_final",
           template_language: "en",
+
+          header_image: productImage, // ✅ ADDED
 
           field_1: String(name),
           field_2: String(itemsText),
@@ -203,7 +212,7 @@ app.post("/checkout", async (req, res) => {
       } catch (err) {
         console.log("❌ ABANDONED ERROR:", err.response?.data || err.message);
       }
-    }, 60000); // ⏳ 1 MIN (TEST)
+    }, 60000);
 
   } catch (err) {
     console.log("❌ ERROR:", err.message);
