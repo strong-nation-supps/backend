@@ -86,7 +86,7 @@ app.post("/shopify", async (req, res) => {
 
     const payload = {
       phone_number: phone,
-      template_name: "cart", // keep as-is if you're testing same template
+      template_name: "strong_nation_pune_distributor_final", // keep as-is if you're testing same template
       template_language: "en",
 
       field_1: String(name),
@@ -177,7 +177,7 @@ app.post("/checkout", async (req, res) => {
 
         const payload = {
           phone_number: phone,
-          template_name: "cart",
+          template_name: "strong_nation_pune_distributor_final",
           template_language: "en",
 
           field_1: String(name),
