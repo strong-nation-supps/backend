@@ -92,10 +92,10 @@ app.post("/shopify", async (req, res) => {
       template_language: "en",
 
       header_image: productImage, // ✅ ADDED
-
       field_1: String(name),
-      field_2: String(itemsText),
-      field_3: String(totalPrice)
+      field_2: String(orderNumber),
+      field_3: String(itemsText),
+      field_4: String(totalPrice)
     };
 
     console.log("📤 Sending Order Template:", JSON.stringify(payload, null, 2));
