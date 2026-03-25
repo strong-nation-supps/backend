@@ -180,7 +180,7 @@ app.post("/checkout", async (req, res) => {
         console.log("⏰ Sending abandoned message...");
 
         // ✅ FIXED IMAGE (YOUR LINK)
-        const productImage = "https://cdn.shopify.com/s/files/1/0651/8492/3725/files/WhatsApp_Image_2026-03-18_at_1.39.15_PM.jpg?v=1774416591";
+        const productImage = "https://cdn.shopify.com/s/files/1/0651/8492/3725/files/41_1-Web-Banner_jpg.jpg?v=1774432527";
 
         const payload = {
           phone_number: phone,
