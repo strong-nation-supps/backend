@@ -88,7 +88,7 @@ app.post("/shopify", async (req, res) => {
 
     const payload = {
       phone_number: phone,
-      template_name: "cart_1",
+      template_name: "order_confirm_sn",
       template_language: "en",
 
       header_image: productImage, // ✅ ADDED
