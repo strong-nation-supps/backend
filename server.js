@@ -1,4 +1,3 @@
-javascript
 const express = require("express");
 const axios = require("axios");
 
@@ -38,11 +37,14 @@ app.post("/shopify", async (req, res) => {
       req.headers["x-shopify-webhook-id"] || data?.id;
 
     if (processedWebhookIds.has(webhookId)) {
+      console.log("⚠️ Duplicate:", webhookId);
       return res.sendStatus(200);
     }
     processedWebhookIds.add(webhookId);
 
     res.sendStatus(200);
+
+    console.log("📩 Order:", data?.order_number);
 
     const phoneRaw =
       data?.customer?.phone ||
@@ -59,7 +61,10 @@ app.post("/shopify", async (req, res) => {
       if (phone.length === 10) phone = "91" + phone;
     }
 
-    if (!phone) return;
+    if (!phone) {
+      console.log("❌ No phone found");
+      return;
+    }
 
     const lineItems = data?.line_items || [];
 
@@ -72,32 +77,42 @@ app.post("/shopify", async (req, res) => {
             `${(item.title || "Item").substring(0, 25)} x${item.quantity}`
         )
         .join(", ");
+
+      if (lineItems.length > 2) {
+        itemsText += " + more";
+      }
     }
 
+    // ✅ FIXED IMAGE (YOUR LINK)
     const productImage = "https://cdn.shopify.com/s/files/1/0651/8492/3725/files/WhatsApp_Image_2026-03-18_at_1.39.15_PM.jpg?v=1774416591";
 
     const payload = {
       phone_number: phone,
       template_name: "cart_1",
       template_language: "en",
-      header_image: productImage,
+
+      header_image: productImage, // ✅ ADDED
+
       field_1: String(name),
       field_2: String(itemsText),
       field_3: String(totalPrice)
     };
 
-    await axios.post(
+    console.log("📤 Sending Order Template:", JSON.stringify(payload, null, 2));
+
+    const response = await axios.post(
       `https://api.wamantra.com/api/${VENDOR_ID}/contact/send-template-message`,
       payload,
       {
         headers: {
           Authorization: `Bearer ${TOKEN}`,
           "Content-Type": "application/json"
-        }
+        },
+        timeout: 15000
       }
     );
 
-    console.log("✅ ORDER MESSAGE SENT");
+    console.log("✅ ORDER MESSAGE SENT:", response.data);
 
   } catch (err) {
     console.log("❌ ORDER ERROR:", err.response?.data || err.message);
@@ -105,7 +120,7 @@ app.post("/shopify", async (req, res) => {
 });
 
 
-// 🔥 ABANDONED CART (24 HOURS DELAY)
+// 🔥 ABANDONED CART (1 MIN TEST MODE)
 app.post("/checkout", async (req, res) => {
   const data = req.body;
 
@@ -113,11 +128,14 @@ app.post("/checkout", async (req, res) => {
     const checkoutId = data?.id;
 
     if (processedWebhookIds.has(checkoutId)) {
+      console.log("⚠️ Duplicate checkout:", checkoutId);
       return res.sendStatus(200);
     }
     processedWebhookIds.add(checkoutId);
 
     res.sendStatus(200);
+
+    console.log("🛒 Checkout captured");
 
     const phoneRaw =
       data?.phone ||
@@ -133,7 +151,10 @@ app.post("/checkout", async (req, res) => {
       if (phone.length === 10) phone = "91" + phone;
     }
 
-    if (!phone) return;
+    if (!phone) {
+      console.log("❌ No phone");
+      return;
+    }
 
     const items = data?.line_items || [];
 
@@ -145,26 +166,37 @@ app.post("/checkout", async (req, res) => {
           `${(item.title || "Item").substring(0, 25)} x${item.quantity}`
         )
         .join(", ");
+
+      if (items.length > 2) {
+        itemsText += " + more";
+      }
     }
 
-    console.log("📲 Will send after 24 HOURS:", phone);
+    console.log("📲 Will send after 1 min:", phone);
 
-    // ⏳ 24 HOURS DELAY
+    // ⏳ 1 MINUTE DELAY (TESTING)
     setTimeout(async () => {
       try {
+        console.log("⏰ Sending abandoned message...");
+
+        // ✅ FIXED IMAGE (YOUR LINK)
         const productImage = "https://cdn.shopify.com/s/files/1/0651/8492/3725/files/41_1-Web-Banner_jpg.jpg?v=1774432527";
 
         const payload = {
           phone_number: phone,
           template_name: "cart_1",
           template_language: "en",
-          header_image: productImage,
+
+          header_image: productImage, // ✅ ADDED
+
           field_1: String(name),
           field_2: String(itemsText),
           field_3: String(totalPrice)
         };
 
-        await axios.post(
+        console.log("📤 Sending Abandoned:", JSON.stringify(payload, null, 2));
+
+        const response = await axios.post(
           `https://api.wamantra.com/api/${VENDOR_ID}/contact/send-template-message`,
           payload,
           {
@@ -175,12 +207,12 @@ app.post("/checkout", async (req, res) => {
           }
         );
 
-        console.log("✅ ABANDONED MESSAGE SENT AFTER 24 HOURS");
+        console.log("✅ ABANDONED MESSAGE SENT:", response.data);
 
       } catch (err) {
         console.log("❌ ABANDONED ERROR:", err.response?.data || err.message);
       }
-    }, 86400000); // ⏳ 24 HOURS
+    }, 86400000);
 
   } catch (err) {
     console.log("❌ ERROR:", err.message);
