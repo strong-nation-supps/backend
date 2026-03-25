@@ -172,7 +172,7 @@ app.post("/checkout", async (req, res) => {
       }
     }
 
-    console.log("📲 Will send after 1 min:", phone);
+    console.log("📲 Will send after 24 hour:", phone);
 
     // ⏳ 1 MINUTE DELAY (TESTING)
     setTimeout(async () => {
