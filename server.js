@@ -78,15 +78,18 @@ app.post("/shopify", async (req, res) => {
         .join(", ");
     }
 
-   const payload = {
-  phone_number: phone,
-  template_name: "cart_msg",
-  template_language: "en",
+    const payload = {
+      phone_number: phone,
+      template_name: "cart_msg",
+      template_language: "en",
 
-  field_1: String(name),        // {{1}}
-  field_2: String(itemsText),   // {{2}}
-  field_3: String(totalPrice)   // {{3}}
-};
+      // ✅ ADDED HEADER IMAGE
+      header_image: "https://cdn.shopify.com/s/files/1/0651/8492/3725/files/WhatsApp_Image_2026-03-18_at_1.39.15_PM.jpg?v=1774416591",
+
+      field_1: String(name),
+      field_2: String(itemsText),
+      field_3: String(totalPrice)
+    };
 
     console.log("📤 Sending Order Template:", JSON.stringify(payload, null, 2));
 
@@ -160,6 +163,9 @@ app.post("/checkout", async (req, res) => {
           phone_number: phone,
           template_name: "cart_msg",
           template_language: "en",
+
+          // ✅ ADDED HEADER IMAGE
+          header_image: "https://cdn.shopify.com/s/files/1/0651/8492/3725/files/WhatsApp_Image_2026-03-18_at_1.39.15_PM.jpg?v=1774416591",
 
           field_1: String(name),
           field_2: String(itemsText),
