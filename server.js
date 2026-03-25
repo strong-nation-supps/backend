@@ -27,6 +27,7 @@ app.get("/", (req, res) => {
   res.send("Server is running ✅");
 });
 
+
 // ✅ SHOPIFY WEBHOOK (ORDER CONFIRMATION)
 app.post("/shopify", async (req, res) => {
   const data = req.body;
@@ -53,7 +54,7 @@ app.post("/shopify", async (req, res) => {
 
     const name = data?.customer?.first_name || "Customer";
     const orderNumber = data?.order_number || data?.id;
-    const totalPrice = data?.total_price || "0";
+    const totalPrice = parseFloat(data?.total_price || "0").toFixed(0);
 
     let phone = null;
     if (phoneRaw) {
@@ -71,22 +72,27 @@ app.post("/shopify", async (req, res) => {
     let itemsText = "Items unavailable";
     if (lineItems.length > 0) {
       itemsText = lineItems
+        .slice(0, 2)
         .map(
           (item) =>
-            `${(item.title || "Item").substring(0, 40)} x${item.quantity}`
+            `${(item.title || "Item").substring(0, 25)} x${item.quantity}`
         )
         .join(", ");
+
+      if (lineItems.length > 2) {
+        itemsText += " + more";
+      }
     }
 
-   const payload = {
-  phone_number: phone,
-  template_name: "cart_msg",
-  template_language: "en",
+    const payload = {
+      phone_number: phone,
+      template_name: "cart", // keep as-is if you're testing same template
+      template_language: "en",
 
-  field_1: String(name),        // {{1}}
-  field_2: String(itemsText),   // {{2}}
-  field_3: String(totalPrice)   // {{3}}
-};
+      field_1: String(name),
+      field_2: String(itemsText),
+      field_3: String(totalPrice)
+    };
 
     console.log("📤 Sending Order Template:", JSON.stringify(payload, null, 2));
 
@@ -110,11 +116,19 @@ app.post("/shopify", async (req, res) => {
 });
 
 
-// 🔥 ABANDONED CART (1 MIN TEST MODE LIVE)
+// 🔥 ABANDONED CART (1 MIN TEST MODE)
 app.post("/checkout", async (req, res) => {
   const data = req.body;
 
   try {
+    const checkoutId = data?.id;
+
+    if (processedWebhookIds.has(checkoutId)) {
+      console.log("⚠️ Duplicate checkout:", checkoutId);
+      return res.sendStatus(200);
+    }
+    processedWebhookIds.add(checkoutId);
+
     res.sendStatus(200);
 
     console.log("🛒 Checkout captured");
@@ -125,7 +139,7 @@ app.post("/checkout", async (req, res) => {
       data?.billing_address?.phone;
 
     const name = data?.customer?.first_name || "Customer";
-    const totalPrice = data?.total_price || "0";
+    const totalPrice = parseFloat(data?.total_price || "0").toFixed(0);
 
     let phone = null;
     if (phoneRaw) {
@@ -143,10 +157,15 @@ app.post("/checkout", async (req, res) => {
     let itemsText = "Your cart items";
     if (items.length > 0) {
       itemsText = items
+        .slice(0, 2)
         .map(item =>
-          `${(item.title || "Item").substring(0, 40)} x${item.quantity}`
+          `${(item.title || "Item").substring(0, 25)} x${item.quantity}`
         )
         .join(", ");
+
+      if (items.length > 2) {
+        itemsText += " + more";
+      }
     }
 
     console.log("📲 Will send after 1 min:", phone);
@@ -158,7 +177,7 @@ app.post("/checkout", async (req, res) => {
 
         const payload = {
           phone_number: phone,
-          template_name: "cart_msg",
+          template_name: "cart",
           template_language: "en",
 
           field_1: String(name),
@@ -184,7 +203,7 @@ app.post("/checkout", async (req, res) => {
       } catch (err) {
         console.log("❌ ABANDONED ERROR:", err.response?.data || err.message);
       }
-    }, 60000); // ⏳ 1 MIN
+    }, 60000); // ⏳ 1 MIN (TEST)
 
   } catch (err) {
     console.log("❌ ERROR:", err.message);
