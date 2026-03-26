@@ -55,7 +55,7 @@ app.post("/shopify", async (req, res) => {
       data?.phone;
 
     const name = data?.customer?.first_name || "Customer";
-    const orderNumber = data?.id; // ✅ FIXED (ID ONLY)
+    const orderNumber = data?.id;
     const totalPrice = parseFloat(data?.total_price || "0").toFixed(0);
 
     let phone = null;
@@ -79,7 +79,7 @@ app.post("/shopify", async (req, res) => {
           (item) =>
             `${(item.title || "Item").substring(0, 25)} x${item.quantity}`
         )
-        .join(", "); // ✅ FIXED (NO NEW LINE)
+        .join(", ");
 
       if (lineItems.length > 2) {
         itemsText += ", + more items";
@@ -167,14 +167,14 @@ app.post("/checkout", async (req, res) => {
           (item) =>
             `${(item.title || "Item").substring(0, 25)} x${item.quantity}`
         )
-        .join(", "); // ✅ FIXED
+        .join(", ");
 
       if (items.length > 2) {
         itemsText += ", + more items";
       }
     }
 
-    console.log("📲 Will send after 30 sec:", phone);
+    console.log("📲 Will send after 24 hours:", phone);
 
     setTimeout(async () => {
       try {
@@ -213,7 +213,7 @@ app.post("/checkout", async (req, res) => {
       } catch (err) {
         console.log("❌ ABANDONED ERROR:", err.response?.data || err.message);
       }
-    }, 30000); // ✅ 30 seconds
+    }, 86400000); // ✅ 24 HOURS
 
   } catch (err) {
     console.log("❌ ERROR:", err.message);
