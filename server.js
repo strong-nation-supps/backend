@@ -28,7 +28,9 @@ app.get("/", (req, res) => {
 });
 
 
-// ✅ SHOPIFY WEBHOOK (ORDER CONFIRMATION)
+// ================================
+// ✅ ORDER CONFIRMATION (NO IMAGE)
+// ================================
 app.post("/shopify", async (req, res) => {
   const data = req.body;
 
@@ -53,7 +55,7 @@ app.post("/shopify", async (req, res) => {
       data?.phone;
 
     const name = data?.customer?.first_name || "Customer";
-    const orderNumber = data?.order_number || data?.id; // ✅ FIX
+    const orderNumber = data?.order_number || data?.id;
     const totalPrice = parseFloat(data?.total_price || "0").toFixed(0);
 
     let phone = null;
@@ -75,25 +77,23 @@ app.post("/shopify", async (req, res) => {
         .slice(0, 2)
         .map(
           (item) =>
-            `${(item.title || "Item").substring(0, 25)} x${item.quantity}`
+            `• ${(item.title || "Item").substring(0, 25)} x${item.quantity}`
         )
-        .join(", ");
+        .join("\n");
 
       if (lineItems.length > 2) {
-        itemsText += " + more";
+        itemsText += "\n• + more items";
       }
     }
 
-   
+    // ✅ ORDER TEMPLATE (NO IMAGE)
     const payload = {
       phone_number: phone,
       template_name: "order_confirm_sn",
       template_language: "en",
 
-      header_image: productImage,
-
       field_1: String(name),
-      field_2: String(orderNumber), // ✅ FIXED
+      field_2: String(orderNumber),
       field_3: String(itemsText),
       field_4: String(totalPrice)
     };
@@ -120,7 +120,9 @@ app.post("/shopify", async (req, res) => {
 });
 
 
-// 🔥 ABANDONED CART (24 HOURS DELAY — UNCHANGED)
+// ==================================
+// 🔥 ABANDONED CART (WITH IMAGE)
+// ==================================
 app.post("/checkout", async (req, res) => {
   const data = req.body;
 
@@ -162,13 +164,14 @@ app.post("/checkout", async (req, res) => {
     if (items.length > 0) {
       itemsText = items
         .slice(0, 2)
-        .map(item =>
-          `${(item.title || "Item").substring(0, 25)} x${item.quantity}`
+        .map(
+          (item) =>
+            `• ${(item.title || "Item").substring(0, 25)} x${item.quantity}`
         )
-        .join(", ");
+        .join("\n");
 
       if (items.length > 2) {
-        itemsText += " + more";
+        itemsText += "\n• + more items";
       }
     }
 
@@ -178,14 +181,16 @@ app.post("/checkout", async (req, res) => {
       try {
         console.log("⏰ Sending abandoned message...");
 
-        const productImage = "https://cdn.shopify.com/s/files/1/0651/8492/3725/files/41_1-Web-Banner_jpg.jpg?v=1774432527";
+        const productImage =
+          "https://cdn.shopify.com/s/files/1/0651/8492/3725/files/41_1-Web-Banner_jpg.jpg?v=1774432527";
 
+        // ✅ CART TEMPLATE (WITH IMAGE)
         const payload = {
           phone_number: phone,
           template_name: "cart_1",
           template_language: "en",
 
-          header_image: productImage,
+          header_image: productImage, // ✅ ONLY HERE
 
           field_1: String(name),
           field_2: String(itemsText),
@@ -210,7 +215,7 @@ app.post("/checkout", async (req, res) => {
       } catch (err) {
         console.log("❌ ABANDONED ERROR:", err.response?.data || err.message);
       }
-    }, 86400000); // 24 hours
+    }, 86400000); // 24 hrs
 
   } catch (err) {
     console.log("❌ ERROR:", err.message);
@@ -223,4 +228,3 @@ const PORT = process.env.PORT || 3000;
 app.listen(PORT, () =>
   console.log(`🚀 Server running on port ${PORT}`)
 );
-
