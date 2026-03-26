@@ -185,7 +185,7 @@ app.post("/checkout", async (req, res) => {
 
         const payload = {
           phone_number: phone,
-          template_name: "cart_1",
+          template_name: "cart_2",
           template_language: "en",
 
           header_image: productImage,
