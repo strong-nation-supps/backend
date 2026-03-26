@@ -46,7 +46,7 @@ app.post("/shopify", async (req, res) => {
 
     res.sendStatus(200);
 
-    console.log("📩 Order:", data?.order_number);
+    console.log("📩 Order:", data?.id);
 
     const phoneRaw =
       data?.customer?.phone ||
@@ -55,7 +55,7 @@ app.post("/shopify", async (req, res) => {
       data?.phone;
 
     const name = data?.customer?.first_name || "Customer";
-    const orderNumber = data?.order_number || data?.id;
+    const orderNumber = data?.id; // ✅ FIXED (ID ONLY)
     const totalPrice = parseFloat(data?.total_price || "0").toFixed(0);
 
     let phone = null;
@@ -77,16 +77,15 @@ app.post("/shopify", async (req, res) => {
         .slice(0, 2)
         .map(
           (item) =>
-            `• ${(item.title || "Item").substring(0, 25)} x${item.quantity}`
+            `${(item.title || "Item").substring(0, 25)} x${item.quantity}`
         )
-        .join("\n");
+        .join(", "); // ✅ FIXED (NO NEW LINE)
 
       if (lineItems.length > 2) {
-        itemsText += "\n• + more items";
+        itemsText += ", + more items";
       }
     }
 
-    // ✅ ORDER TEMPLATE (NO IMAGE)
     const payload = {
       phone_number: phone,
       template_name: "order_confirm_sn",
@@ -166,16 +165,16 @@ app.post("/checkout", async (req, res) => {
         .slice(0, 2)
         .map(
           (item) =>
-            `• ${(item.title || "Item").substring(0, 25)} x${item.quantity}`
+            `${(item.title || "Item").substring(0, 25)} x${item.quantity}`
         )
-        .join("\n");
+        .join(", "); // ✅ FIXED
 
       if (items.length > 2) {
-        itemsText += "\n• + more items";
+        itemsText += ", + more items";
       }
     }
 
-    console.log("📲 Will send after 24 hour:", phone);
+    console.log("📲 Will send after 30 sec:", phone);
 
     setTimeout(async () => {
       try {
@@ -184,13 +183,12 @@ app.post("/checkout", async (req, res) => {
         const productImage =
           "https://cdn.shopify.com/s/files/1/0651/8492/3725/files/41_1-Web-Banner_jpg.jpg?v=1774432527";
 
-        // ✅ CART TEMPLATE (WITH IMAGE)
         const payload = {
           phone_number: phone,
           template_name: "cart_1",
           template_language: "en",
 
-          header_image: productImage, // ✅ ONLY HERE
+          header_image: productImage,
 
           field_1: String(name),
           field_2: String(itemsText),
@@ -215,7 +213,7 @@ app.post("/checkout", async (req, res) => {
       } catch (err) {
         console.log("❌ ABANDONED ERROR:", err.response?.data || err.message);
       }
-    }, 86400000); // 24 hrs
+    }, 30000); // ✅ 30 seconds
 
   } catch (err) {
     console.log("❌ ERROR:", err.message);
