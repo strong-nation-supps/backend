@@ -178,7 +178,7 @@ app.post("/checkout", async (req, res) => {
     const productImage =
       "https://cdn.shopify.com/s/files/1/0651/8492/3725/files/41_1-Web-Banner_jpg.jpg?v=1774432527";
 
-    console.log("📲 Scheduling abandoned message after 30 seconds:", phone);
+    console.log("📲 Scheduling abandoned message after 6hr seconds:", phone);
 
     const payload = {
       phone_number: phone,
@@ -192,7 +192,7 @@ app.post("/checkout", async (req, res) => {
       field_3: String(totalPrice),
 
       // ✅ 30 seconds delay
-      scheduled_at: new Date(Date.now() + 30 * 1000).toISOString()
+    scheduled_at: new Date(Date.now() + 6 * 60 * 60 * 1000).toISOString()
     };
 
     console.log("📤 Scheduling Abandoned:", JSON.stringify(payload, null, 2));
