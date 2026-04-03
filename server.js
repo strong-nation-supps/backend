@@ -29,7 +29,7 @@ app.get("/", (req, res) => {
 
 
 // ================================
-// ✅ ORDER CONFIRMATION (NO IMAGE)
+// ✅ ORDER CONFIRMATION (NO CHANGE)
 // ================================
 app.post("/shopify", async (req, res) => {
   const data = req.body;
@@ -120,7 +120,7 @@ app.post("/shopify", async (req, res) => {
 
 
 // ==================================
-// 🔥 ABANDONED CART (WITH IMAGE)
+// 🔥 ABANDONED CART (30 SEC TEST)
 // ==================================
 app.post("/checkout", async (req, res) => {
   const data = req.body;
@@ -141,7 +141,8 @@ app.post("/checkout", async (req, res) => {
     const phoneRaw =
       data?.phone ||
       data?.customer?.phone ||
-      data?.billing_address?.phone;
+      data?.billing_address?.phone ||
+      data?.shipping_address?.phone;
 
     const name = data?.customer?.first_name || "Customer";
     const totalPrice = parseFloat(data?.total_price || "0").toFixed(0);
@@ -174,49 +175,43 @@ app.post("/checkout", async (req, res) => {
       }
     }
 
-    console.log("📲 Will send after 24 hours:", phone);
+    const productImage =
+      "https://cdn.shopify.com/s/files/1/0651/8492/3725/files/41_1-Web-Banner_jpg.jpg?v=1774432527";
 
-    setTimeout(async () => {
-      try {
-        console.log("⏰ Sending abandoned message...");
+    console.log("📲 Scheduling abandoned message after 30 seconds:", phone);
 
-        const productImage =
-          "https://cdn.shopify.com/s/files/1/0651/8492/3725/files/41_1-Web-Banner_jpg.jpg?v=1774432527";
+    const payload = {
+      phone_number: phone,
+      template_name: "cart_2",
+      template_language: "en",
 
-        const payload = {
-          phone_number: phone,
-          template_name: "cart_2",
-          template_language: "en",
+      header_image: productImage,
 
-          header_image: productImage,
+      field_1: String(name),
+      field_2: String(itemsText),
+      field_3: String(totalPrice),
 
-          field_1: String(name),
-          field_2: String(itemsText),
-          field_3: String(totalPrice)
-        };
+      // ✅ 30 seconds delay
+      scheduled_at: new Date(Date.now() + 30 * 1000).toISOString()
+    };
 
-        console.log("📤 Sending Abandoned:", JSON.stringify(payload, null, 2));
+    console.log("📤 Scheduling Abandoned:", JSON.stringify(payload, null, 2));
 
-        const response = await axios.post(
-          `https://api.wamantra.com/api/${VENDOR_ID}/contact/send-template-message`,
-          payload,
-          {
-            headers: {
-              Authorization: `Bearer ${TOKEN}`,
-              "Content-Type": "application/json"
-            }
-          }
-        );
-
-        console.log("✅ ABANDONED MESSAGE SENT:", response.data);
-
-      } catch (err) {
-        console.log("❌ ABANDONED ERROR:", err.response?.data || err.message);
+    const response = await axios.post(
+      `https://api.wamantra.com/api/${VENDOR_ID}/contact/send-template-message`,
+      payload,
+      {
+        headers: {
+          Authorization: `Bearer ${TOKEN}`,
+          "Content-Type": "application/json"
+        }
       }
-    }, 86400000); // ✅ 24 HOURS
+    );
+
+    console.log("✅ ABANDONED MESSAGE SCHEDULED:", response.data);
 
   } catch (err) {
-    console.log("❌ ERROR:", err.message);
+    console.log("❌ ABANDONED ERROR:", err.response?.data || err.message);
   }
 });
 
